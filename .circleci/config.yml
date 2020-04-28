@@ -250,19 +250,18 @@ jobs:
     steps:
       - restore_cache:
           key: base-assets-{{ .Revision }}
-      # Image build currently broken. See #209
-      #- run:
-         #name: linux-ppc64le build
-         #no_output_timeout: 1.5h
-         #command: |
-           #docker load -i ~/docker/base.tar
-           #make linux-ppc64le
-           #tagged=$(docker images -q -f 'since=dockcross/linux-ppc64le:latest' --format '{{.Repository}}:{{.Tag}}' | grep linux-ppc64le)
-           #docker save -o ~/docker/linux-ppc64le.tar dockcross/linux-ppc64le:latest $tagged
-      #- run:
-         #name: linux-ppc64le test
-         #command: |
-           #make linux-ppc64le.test
+      - run:
+         name: linux-ppc64le build
+         no_output_timeout: 1.5h
+         command: |
+           docker load -i ~/docker/base.tar
+           make linux-ppc64le
+           tagged=$(docker images -q -f 'since=dockcross/linux-ppc64le:latest' --format '{{.Repository}}:{{.Tag}}' | grep linux-ppc64le)
+           docker save -o ~/docker/linux-ppc64le.tar dockcross/linux-ppc64le:latest $tagged
+      - run:
+         name: linux-ppc64le test
+         command: |
+           make linux-ppc64le.test
       - save_cache:
           key: linux-ppc64le-assets-{{ .Revision }}
           paths: ~/docker/linux-ppc64le.tar
@@ -366,6 +365,46 @@ jobs:
       - save_cache:
           key: manylinux2010-x64-assets-{{ .Revision }}
           paths: ~/docker/manylinux2010-x64.tar
+  manylinux2010-x86:
+    <<: *build-settings
+    steps:
+      - restore_cache:
+          key: base-assets-{{ .Revision }}
+      - run:
+         name: manylinux2010-x86 build
+         no_output_timeout: 1.5h
+         command: |
+           docker load -i ~/docker/base.tar
+           make manylinux2010-x86
+           tagged=$(docker images -q -f 'since=dockcross/manylinux2010-x86:latest' --format '{{.Repository}}:{{.Tag}}' | grep manylinux2010-x86)
+           docker save -o ~/docker/manylinux2010-x86.tar dockcross/manylinux2010-x86:latest $tagged
+      - run:
+         name: manylinux2010-x86 test
+         command: |
+           make manylinux2010-x86.test
+      - save_cache:
+          key: manylinux2010-x86-assets-{{ .Revision }}
+          paths: ~/docker/manylinux2010-x86.tar
+  manylinux2014-x64:
+    <<: *build-settings
+    steps:
+      - restore_cache:
+          key: base-assets-{{ .Revision }}
+      - run:
+         name: manylinux2014-x64 build
+         no_output_timeout: 1.5h
+         command: |
+           docker load -i ~/docker/base.tar
+           make manylinux2014-x64
+           tagged=$(docker images -q -f 'since=dockcross/manylinux2014-x64:latest' --format '{{.Repository}}:{{.Tag}}' | grep manylinux2014-x64)
+           docker save -o ~/docker/manylinux2014-x64.tar dockcross/manylinux2014-x64:latest $tagged
+      - run:
+         name: manylinux2014-x64 test
+         command: |
+           make manylinux2014-x64.test
+      - save_cache:
+          key: manylinux2014-x64-assets-{{ .Revision }}
+          paths: ~/docker/manylinux2014-x64.tar
   windows-static-x64:
     <<: *build-settings
     steps:
@@ -620,19 +659,18 @@ jobs:
               tagged=$(docker images -q -f 'since=dockcross/linux-s390x:latest' --format '{{.Repository}}:{{.Tag}}' | grep linux-s390x)
               docker push $tagged
             fi
-      # Image build currently broken. See #209
-      #- restore_cache:
-          #key: linux-ppc64le-assets-{{ .Revision }}
-      #- deploy:
-          #name: Deploy linux-ppc64le
-          #command: |
-            #docker load -i ~/docker/linux-ppc64le.tar
-            #if [ "${CIRCLE_BRANCH}" == "master" ]; then
-              #docker login -u $DOCKER_USER -p $DOCKER_PASS
-              #docker push dockcross/linux-ppc64le:latest
-              #tagged=$(docker images -q -f 'since=dockcross/linux-ppc64le:latest' --format '{{.Repository}}:{{.Tag}}' | grep linux-ppc64le)
-              #docker push $tagged
-            #fi
+      - restore_cache:
+          key: linux-ppc64le-assets-{{ .Revision }}
+      - deploy:
+          name: Deploy linux-ppc64le
+          command: |
+            docker load -i ~/docker/linux-ppc64le.tar
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              docker push dockcross/linux-ppc64le:latest
+              tagged=$(docker images -q -f 'since=dockcross/linux-ppc64le:latest' --format '{{.Repository}}:{{.Tag}}' | grep linux-ppc64le)
+              docker push $tagged
+            fi
       - restore_cache:
           key: linux-x64-assets-{{ .Revision }}
       - deploy:
@@ -691,6 +729,18 @@ jobs:
               docker login -u $DOCKER_USER -p $DOCKER_PASS
               docker push dockcross/manylinux2010-x64:latest
               tagged=$(docker images -q -f 'since=dockcross/manylinux2010-x64:latest' --format '{{.Repository}}:{{.Tag}}' | grep manylinux2010-x64)
+              docker push $tagged
+            fi
+      - restore_cache:
+          key: manylinux2014-x64-assets-{{ .Revision }}
+      - deploy:
+          name: Deploy manylinux2014-x64
+          command: |
+            docker load -i ~/docker/manylinux2014-x64.tar
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              docker push dockcross/manylinux2014-x64:latest
+              tagged=$(docker images -q -f 'since=dockcross/manylinux2014-x64:latest' --format '{{.Repository}}:{{.Tag}}' | grep manylinux2014-x64)
               docker push $tagged
             fi
       - restore_cache:
@@ -802,10 +852,9 @@ workflows:
         - linux-s390x:
             requires:
               - base
-        # Image build currently broken. See #209
-        #- linux-ppc64le:
-            #requires:
-              #- base
+        - linux-ppc64le:
+            requires:
+              - base
         - linux-x64:
             requires:
               - base
@@ -819,6 +868,12 @@ workflows:
             requires:
               - base
         - manylinux2010-x64:
+            requires:
+              - base
+        - manylinux2010-x86:
+            requires:
+              - base
+        - manylinux2014-x64:
             requires:
               - base
         - windows-static-x64:
@@ -852,13 +907,14 @@ workflows:
               - linux-armv7a
               #- linux-mipsel
               - linux-s390x
-              # Image build currently broken. See #209
-              #- linux-ppc64le
+              - linux-ppc64le
               - linux-x64
               - linux-x86
               - manylinux1-x64
               - manylinux1-x86
               - manylinux2010-x64
+              - manylinux2010-x86
+              - manylinux2014-x64
               - windows-static-x64
               - windows-static-x64-posix
               - windows-static-x86
